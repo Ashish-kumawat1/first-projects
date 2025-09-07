@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMaster - Task Management App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Sample initial tasks
+        const initialTasks = [
+            { id: 1, title: 'Complete React Project', description: 'Finish the task management app', dueDate: '2023-06-30', priority: 'high', completed: false },
+            { id: 2, title: 'Buy Groceries', description: 'Milk, Eggs, Bread, Fruits', dueDate: '2023-06-18', priority: 'medium', completed: false },
+            { id: 3, title: 'Call Mom', description: 'Wish her a happy birthday', dueDate: '2023-06-20', priority: 'low', completed: true },
+        ];
+
+        const TaskManager = () => {
+            const [tasks, setTasks] = useState([]);
+            const [filter, setFilter] = useState('all');
+            const [darkMode, setDarkMode] = useState(false);
+            const [showModal, setShowModal] = useState(false);
+            const [editingTask, setEditingTask] = useState(null);
+            const [formData, setFormData] = useState({
+                title: '',
+                description: '',
+                dueDate: '',
+                priority: 'medium'
+            });
+
+            // Initialize tasks from localStorage or initialTasks
+            useEffect(() => {
+                const savedTasks = JSON.parse(localStorage.getItem('tasks'));
+                const savedDarkMode = JSON.parse(localStorage.getItem('darkMode'));
+                
+                if (savedTasks) {
+                    setTasks(savedTasks);
+                } else {
+                    setTasks(initialTasks);
+                }
+                
+                if (savedDarkMode) {
+                    setDarkMode(savedDarkMode);
+                    document.body.classList.toggle('dark-mode', savedDarkMode);
+                }
+            }, []);
+
+            // Save tasks to localStorage whenever they change
+            useEffect(() => {
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            }, [tasks]);
+
+            // Toggle dark mode
+            const toggleDarkMode = () => {
+                setDarkMode(!darkMode);
+                document.body.classList.toggle('dark-mode');
+                localStorage.setItem('darkMode', JSON.stringify(!darkMode));
+            };
+
+            // Filter tasks based on selected filter
+            const filteredTasks = tasks.filter(task => {
+                if (filter === 'completed') return task.completed;
+                if (filter === 'active') return !task.completed;
+                if (filter === 'high') return task.priority === 'high';
+                if (filter === 'medium') return task.priority === 'medium';
+                if (filter === 'low') return task.priority === 'low';
+                return true;
+            });
+
+            // Handle form input changes
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setFormData({
+                    ...formData,
+                    [name]: value
+                });
+            };
+
+            // Add or update a task
+            const saveTask = () => {
+                if (!formData.title.trim()) return;
+
+                if (editingTask) {
+                    // Update existing task
+                    setTasks(tasks.map(task => 
+                        task.id === editingTask.id 
+                            ? { ...task, ...formData }
+                            : task
+                    ));
+                } else {
+                    // Add new task
+                    const newTask = {
+                        id: Date.now(),
+                        completed: false,
+                        ...formData
+                    };
+                    setTasks([...tasks, newTask]);
+                }
+
+                // Reset form and close modal
+                setFormData({
+                    title: '',
+                    description: '',
+                    dueDate: '',
+                    priority: 'medium'
+                });
+                setEditingTask(null);
+                setShowModal(false);
+            };
+
+            // Edit a task
+            const editTask = (task) => {
+                setFormData({
+                    title: task.title,
+                    description: task.description,
+                    dueDate: task.dueDate,
+                    priority: task.priority
+                });
+                setEditingTask(task);
+                setShowModal(true);
+            };
+
+            // Delete a task
+            const deleteTask = (id) => {
+                setTasks(tasks.filter(task => task.id !== id));
+            };
+
+            // Toggle task completion
+            const toggleCompletion = (id) => {
+                setTasks(tasks.map(task => 
+                    task.id === id 
+                        ? { ...task, completed: !task.completed }
+                        : task
+                ));
+            };
+
+            // Open modal for new task
+            const openNewTaskModal = () => {
+                setFormData({
+                    title: '',
+                    description: '',
+                    dueDate: '',
+                    priority: 'medium'
+                });
+                setEditingTask(null);
+                setShowModal(true);
+            };
+
+            // Close modal
+            const closeModal = () => {
+                setShowModal(false);
+                setEditingTask(null);
+            };
+
+            // Format date for display
+            const formatDate = (dateString) => {
+                const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                return new Date(dateString).toLocaleDateString(undefined, options);
+            };
+
+            return (
+                <div className="container">
+                    <header>
+                        <div className="logo">
+                            <i className="fas fa-tasks"></i>
+                            <h1>TaskMaster</h1>
+                        </div>
+                        <button className="theme-toggle" onClick={toggleDarkMode}>
+                            <span></span>
+                        </button>
+                    </header>
+
+                    <div className="app-container">
+                        <div className="sidebar">
+                            <h2><i className="fas fa-filter"></i> Filter Tasks</h2>
+                            <div className="filter-buttons">
+                                <button 
+                                    className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+                                    onClick={() => setFilter('all')}
+                                >
+                                    <i className="fas fa-th-list"></i> All Tasks
+                                </button>
+                                <button 
+                                    className={`filter-btn ${filter === 'active' ? 'active' : ''}`}
+                                    onClick={() => setFilter('active')}
+                                >
+                                    <i className="fas fa-circle"></i> Active
+                                </button>
+                                <button 
+                                    className={`filter-btn ${filter === 'completed' ? 'active' : ''}`}
+                                    onClick={() => setFilter('completed')}
+                                >
+                                    <i className="fas fa-check-circle"></i> Completed
+                                </button>
+                                <button 
+                                    className={`filter-btn ${filter === 'high' ? 'active' : ''}`}
+                                    onClick={() => setFilter('high')}
+                                >
+                                    <i className="fas fa-arrow-up"></i> High Priority
+                                </button>
+                                <button 
+                                    className={`filter-btn ${filter === 'medium' ? 'active' : ''}`}
+                                    onClick={() => setFilter('medium')}
+                                >
+                                    <i className="fas fa-minus"></i> Medium Priority
+                                </button>
+                                <button 
+                                    className={`filter-btn ${filter === 'low' ? 'active' : ''}`}
+                                    onClick={() => setFilter('low')}
+                                >
+                                    <i className="fas fa-arrow-down"></i> Low Priority
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="tasks-container">
+                            <div className="tasks-header">
+                                <h2>
+                                    My Tasks <span className="task-count">{filteredTasks.length}</span>
+                                </h2>
+                                <button className="add-task-btn" onClick={openNewTaskModal}>
+                                    <i className="fas fa-plus"></i> Add New Task
+                                </button>
+                            </div>
+
+                            <div className="tasks-list">
+                                {filteredTasks.length > 0 ? (
+                                    filteredTasks.map(task => (
+                                        <div key={task.id} className={`task-item ${task.completed ? 'completed' : ''}`}>
+                                            <div className="task-checkbox">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={task.completed}
+                                                    onChange={() => toggleCompletion(task.id)}
+                                                />
+                                            </div>
+                                            <div className="task-content">
+                                                <div className="task-title">{task.title}</div>
+                                                <div className="task-description">{task.description}</div>
+                                                {task.dueDate && (
+                                                    <div className="task-date">
+                                                        Due: {formatDate(task.dueDate)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="task-meta">
+                                                <span className={`task-priority priority-${task.priority}`}>
+                                                    {task.priority}
+                                                </span>
+                                            </div>
+                                            <div className="task-actions">
+                                                <button onClick={() => editTask(task)}>
+                                                    <i className="fas fa-edit"></i>
+                                                </button>
+                                                <button onClick={() => deleteTask(task.id)}>
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="empty-state">
+                                        <i className="fas fa-clipboard-list"></i>
+                                        <p>No tasks found. Add a new task or change your filter.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Add/Edit Task Modal */}
+                    <div className={`modal ${showModal ? 'show' : ''}`}>
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h2>{editingTask ? 'Edit Task' : 'Add New Task'}</h2>
+                                <button className="close-btn" onClick={closeModal}>
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="title">Task Title</label>
+                                <input
+                                    type="text"
+                                    id="title"
+                                    name="title"
+                                    value={formData.title}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter task title"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="description">Description</label>
+                                <textarea
+                                    id="description"
+                                    name="description"
+                                    value={formData.description}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter task description"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="dueDate">Due Date</label>
+                                <input
+                                    type="date"
+                                    id="dueDate"
+                                    name="dueDate"
+                                    value={formData.dueDate}
+                                    onChange={handleInputChange}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="priority">Priority</label>
+                                <select
+                                    id="priority"
+                                    name="priority"
+                                    value={formData.priority}
+                                    onChange={handleInputChange}
+                                >
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
+                            </div>
+                            <div className="form-actions">
+                                <button className="cancel-btn" onClick={closeModal}>
+                                    Cancel
+                                </button>
+                                <button className="save-btn" onClick={saveTask}>
+                                    {editingTask ? 'Update Task' : 'Add Task'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<TaskManager />);
+    </script>
+</body>
+</html>
